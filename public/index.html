@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="ibm">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SAMUEL ENHANCED — Self-Learning Checkers · 1959</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:wght@400;700&family=Bebas+Neue&display=swap');
+
+/* ── THEMES ── */
+[data-theme="ibm"] {
+  --bg: #1a0a00; --surface: #2a1200; --primary: #cc2200;
+  --primary-hi: #ff4422; --ivory: #f5e6c8; --dim: #7a4422;
+  --gold: #c8922a; --border: #cc220033;
+  --board-dk: #8b1a00; --board-lt: #f5e6c8;
+}
+[data-theme="noir"] {
+  --bg: #0a0a0f; --surface: #12121a; --primary: #6644ff;
+  --primary-hi: #8866ff; --ivory: #e8e8ff; --dim: #443366;
+  --gold: #aa88ff; --border: #6644ff33;
+  --board-dk: #1e1432; --board-lt: #2a1e44;
+}
+[data-theme="wood"] {
+  --bg: #2d1a0e; --surface: #3d2410; --primary: #8b4513;
+  --primary-hi: #cd6532; --ivory: #fdf5e6; --dim: #8b6040;
+  --gold: #daa520; --border: #8b451333;
+  --board-dk: #5c3317; --board-lt: #deb887;
+}
+
+* { box-sizing:border-box; margin:0; padding:0; }
+
+body {
+  background: var(--bg);
+  background-image: radial-gradient(ellipse at 15% 0%, rgba(204,34,0,0.12) 0%, transparent 55%),
+                    radial-gradient(ellipse at 85% 100%, rgba(180,20,0,0.08) 0%, transparent 55%);
+  color: var(--ivory);
+  font-family: 'Courier Prime', monospace;
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px 12px;
+}
+
+header { text-align:center; margin-bottom:16px; }
+
+h1 {
+  font-family: 'Bebas Neue', cursive;
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  color: var(--primary-hi);
+  text-shadow: 0 0 40px var(--primary), 3px 3px 0 #000;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.tagline {
+  font-size: 0.62rem;
+  letter-spacing: 0.35em;
+  color: var(--dim);
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.divider {
+  width: 240px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  margin: 10px auto;
+}
+
+.theme-bar {
+  display: flex; gap: 6px; justify-content: center; margin-top: 8px;
+}
+.tbtn {
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--dim); font-family: 'Courier Prime', monospace;
+  font-size: 0.58rem; padding: 2px 8px; cursor: pointer;
+  letter-spacing: 0.1em; transition: all 0.2s; text-transform: uppercase;
+}
+.tbtn:hover, .tbtn.on { border-color: var(--gold); color: var(--gold); }
+
+.layout {
+  display: flex; gap: 18px; align-items: flex-start;
+  flex-wrap: wrap; justify-content: center; width: 100%; max-width: 980px;
+}
+
+#board-wrap { position: relative; flex-shrink: 0; }
+
+/* Column/row labels */
+.board-outer {
+  display: inline-block;
+  position: relative;
+}
+.coord-row {
+  display: flex;
+  font-size: 0.6rem;
+  color: var(--dim);
+  letter-spacing: 0.1em;
+  margin-bottom: 2px;
+  padding-left: 18px;
+}
+.coord-row span { flex: 1; text-align: center; }
+.coord-col {
+  position: absolute;
+  left: 2px; top: 20px;
+  display: flex; flex-direction: column;
+  height: calc(100% - 20px);
+}
+.coord-col span {
+  flex: 1; display: flex; align-items: center;
+  font-size: 0.6rem; color: var(--dim);
+}
+
+#board {
+  display: grid; grid-template-columns: repeat(8, 1fr);
+  border: 3px solid var(--gold);
+  box-shadow: 0 0 0 1px #000, 0 0 50px rgba(204,34,0,0.35),
+              inset 0 0 20px rgba(0,0,0,0.4);
+  width: min(490px, 88vw); height: min(490px, 88vw);
+  cursor: pointer; user-select: none;
+}
+
+.sq { display:flex; align-items:center; justify-content:center; position:relative; }
+.sq.dark  { background: var(--board-dk); }
+.sq.light { background: var(--board-lt); }
+.sq.dark.selected { background: #aa3300; box-shadow: inset 0 0 10px rgba(255,200,0,0.3); }
+.sq.dark.hint { box-shadow: inset 0 0 12px rgba(200,146,42,0.6); }
+
+.piece {
+  width: 74%; height: 74%; border-radius: 50%;
+  position: relative; transition: transform 0.12s, box-shadow 0.12s;
+  cursor: pointer;
+}
+.piece:hover { transform: scale(1.1); }
+.piece.red {
+  background: radial-gradient(circle at 35% 30%, #ff7755, #cc2200 55%, #880000);
+  border: 2px solid #ff9977;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.7), inset 0 1px 3px rgba(255,255,255,0.25);
+}
+.piece.blk {
+  background: radial-gradient(circle at 35% 30%, #666, #222 55%, #000);
+  border: 2px solid #888;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.7), inset 0 1px 3px rgba(255,255,255,0.1);
+}
+.piece.king::after {
+  content:'♛'; position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:50%; color:#ffd700; text-shadow:0 0 8px #ffd700;
+}
+
+/* Last move highlight */
+.sq.last-from { outline: 2px solid rgba(200,146,42,0.5); outline-offset: -2px; }
+.sq.last-to   { outline: 2px solid rgba(200,146,42,0.9); outline-offset: -2px; }
+
+/* Sidebar */
+.sidebar { width: 235px; display: flex; flex-direction: column; gap: 9px; }
+.panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 2px solid var(--primary); padding: 11px 13px;
+}
+.panel-title {
+  font-size: 0.58rem; letter-spacing: 0.28em; color: var(--gold);
+  text-transform: uppercase; margin-bottom: 7px; padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.stat-row { display:flex; justify-content:space-between; font-size:0.72rem; margin-bottom:4px; color:var(--dim); }
+.sv { color: var(--ivory); font-weight: bold; }
+
+.log { font-size:0.66rem; line-height:1.75; color:var(--dim); max-height:140px; overflow-y:auto; scrollbar-width:none; }
+.log .hi { color: var(--primary-hi); }
+.log .good { color: var(--gold); }
+
+.btn-row { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:5px; }
+button {
+  background:transparent; border:1px solid var(--primary);
+  color:var(--primary-hi); font-family:'Courier Prime',monospace;
+  font-size:0.68rem; padding:5px 9px; cursor:pointer;
+  letter-spacing:0.06em; transition:all 0.15s; flex:1;
+}
+button:hover { background:var(--primary); color:var(--ivory); box-shadow:0 0 10px var(--primary); }
+button:disabled { opacity:0.3; cursor:not-allowed; }
+button.g { border-color:var(--gold); color:var(--gold); }
+button.g:hover { background:var(--gold); color:var(--bg); }
+
+select {
+  background:var(--surface); border:1px solid var(--border);
+  color:var(--ivory); font-family:'Courier Prime',monospace;
+  font-size:0.68rem; padding:3px 7px; width:100%; margin-bottom:5px;
+}
+
+.eval-wrap { height:7px; background:#111; border:1px solid var(--border); border-radius:1px; overflow:hidden; margin:5px 0; }
+.eval-fill { height:100%; background:linear-gradient(90deg,var(--primary),var(--primary-hi)); transition:width 0.35s; width:50%; }
+
+/* Score/game record */
+.score-box { display:flex; gap:8px; }
+.score-cell { flex:1; text-align:center; }
+.score-num { font-family:'Bebas Neue',cursive; font-size:2rem; color:var(--primary-hi); line-height:1; }
+.score-lbl { font-size:0.55rem; color:var(--dim); letter-spacing:0.2em; }
+
+#overlay {
+  display:none; position:absolute; inset:0;
+  background:rgba(0,0,0,0.85); align-items:center; justify-content:center;
+  flex-direction:column; text-align:center; z-index:10; gap:10px;
+}
+#overlay.show { display:flex; }
+#overlay h2 {
+  font-family:'Bebas Neue',cursive; font-size:2.5rem;
+  color:var(--primary-hi); text-shadow:0 0 30px var(--primary); letter-spacing:0.1em;
+}
+#overlay p { font-size:0.75rem; color:var(--dim); }
+
+.lore { font-size:0.6rem; line-height:1.8; color:#5a3322; font-style:italic; }
+
+/* Particles canvas */
+#px { position:fixed; inset:0; pointer-events:none; z-index:9997; }
+</style>
+</head>
+<body>
+
+<canvas id="px"></canvas>
+
+<header>
+  <h1>SAMUEL</h1>
+  <div class="divider"></div>
+  <p class="tagline">Arthur Samuel · Self-Learning Checkers · IBM 701 · 1959</p>
+  <div class="theme-bar">
+    <button class="tbtn on" onclick="setTheme('ibm',this)">IBM RED</button>
+    <button class="tbtn" onclick="setTheme('noir',this)">NOIR</button>
+    <button class="tbtn" onclick="setTheme('wood',this)">WOOD</button>
+  </div>
+</header>
+
+<div class="layout">
+  <div id="board-wrap">
+    <div id="board"></div>
+    <div id="overlay">
+      <h2 id="ov-title">GAME OVER</h2>
+      <p id="ov-sub">—</p>
+      <button onclick="newGame()" style="flex:none;padding:8px 22px">NEW GAME</button>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="panel">
+      <div class="panel-title">// SCORE</div>
+      <div class="score-box">
+        <div class="score-cell">
+          <div class="score-num" id="sc-red">0</div>
+          <div class="score-lbl">RED (YOU)</div>
+        </div>
+        <div class="score-cell" style="color:var(--dim);font-size:1.2rem;padding-top:10px">:</div>
+        <div class="score-cell">
+          <div class="score-num" id="sc-blk">0</div>
+          <div class="score-lbl">ALPHA (AI)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">// STATUS</div>
+      <div class="stat-row"><span>TURN</span><span id="s-turn" class="sv">—</span></div>
+      <div class="stat-row"><span>MODE</span><span id="s-mode" class="sv">—</span></div>
+      <div class="stat-row"><span>NODES/MOVE</span><span id="s-nodes" class="sv">0</span></div>
+      <div class="stat-row"><span>RED PIECES</span><span id="s-red" class="sv">12</span></div>
+      <div class="stat-row"><span>AI PIECES</span><span id="s-blk" class="sv">12</span></div>
+      <div class="stat-row"><span>MOVE #</span><span id="s-move" class="sv">0</span></div>
+      <div class="panel-title" style="margin-top:4px">// EVALUATION</div>
+      <div class="eval-wrap"><div class="eval-fill" id="eval-bar"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:0.58rem;color:var(--dim)">
+        <span>RED ▶</span><span>◀ AI</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">// CONTROLS</div>
+      <div class="btn-row">
+        <button onclick="newGame()">↺ NEW</button>
+        <button onclick="undoMove()" id="btn-undo">⎌ UNDO</button>
+        <button onclick="hintMove()" id="btn-hint">? HINT</button>
+      </div>
+      <div class="panel-title">OPPONENT</div>
+      <select id="sel-mode" onchange="newGame()">
+        <option value="ai-alpha">vs AI · Alpha (full Samuel engine)</option>
+        <option value="ai-easy">vs AI · Easy (random)</option>
+        <option value="human">2-Player (pass &amp; play)</option>
+        <option value="watch">Watch: Alpha vs Beta (self-play)</option>
+      </select>
+      <div class="panel-title">AI DEPTH</div>
+      <select id="sel-depth" onchange="depthChanged()">
+        <option value="3">3 ply — Fast</option>
+        <option value="5" selected>5 ply — Standard</option>
+        <option value="7">7 ply — Hard</option>
+        <option value="9">9 ply — Expert</option>
+      </select>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">// MACHINE LOG</div>
+      <div class="log" id="log"></div>
+    </div>
+
+    <div class="panel">
+      <div class="lore">
+        Samuel's Alpha-Beta self-play loop: Alpha learns a new strategy. Beta plays the current best. If Alpha wins three in a row, it becomes Beta. If Beta wins three, Alpha is reset.<br><br>
+        "Watch" mode recreates that exact loop — the first reinforcement learning system, 1959.
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── PARTICLES ─────────────────────────────────────────────
+const pc=document.getElementById('px'),pctx=pc.getContext('2d');
+let parts=[];
+function rsz(){pc.width=innerWidth;pc.height=innerHeight;}
+addEventListener('resize',rsz);rsz();
+function burst(x,y,n=25,col='#cc2200'){
+  for(let i=0;i<n;i++) parts.push({
+    x,y,vx:(Math.random()-0.5)*5,vy:(Math.random()-2)*4,
+    life:1,decay:0.025+Math.random()*0.03,col,r:Math.random()*3+1
+  });
+}
+(function animP(){
+  pctx.clearRect(0,0,pc.width,pc.height);
+  parts=parts.filter(p=>{
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.08;p.life-=p.decay;
+    if(p.life<=0)return false;
+    pctx.globalAlpha=p.life;pctx.fillStyle=p.col;
+    pctx.beginPath();pctx.arc(p.x,p.y,p.r,0,Math.PI*2);pctx.fill();
+    return true;
+  });
+  pctx.globalAlpha=1;
+  requestAnimationFrame(animP);
+})();
+
+// ── THEME ──────────────────────────────────────────────────
+function setTheme(t,el){
+  document.documentElement.setAttribute('data-theme',t);
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  render();
+}
+
+// ── GAME STATE ─────────────────────────────────────────────
+let board,turn,selected,legalMoves,history,moveCount;
+let aiThinking=false,nodesSearched=0,aiTimer=null;
+let scores={red:0,blk:0};
+let lastMove=null;
+let hintHighlight=null;
+
+function newGame(){
+  OVERLAY.classList.remove('show');
+  if(aiTimer){clearTimeout(aiTimer);aiTimer=null;}
+  aiThinking=false; lastMove=null; hintHighlight=null;
+
+  board=Array.from({length:8},()=>new Array(8).fill(null));
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    if((r+c)%2===1){
+      if(r<3) board[r][c]={color:'blk',king:false};
+      else if(r>4) board[r][c]={color:'red',king:false};
+    }
+  }
+  turn='red'; selected=null; legalMoves=[]; history=[]; moveCount=0;
+  nodesSearched=0;
+  clearLog();
+  log('IBM 701 ONLINE — SAMUEL ENGINE ACTIVE','hi');
+  log('Red = YOU  |  Black = ALPHA');
+  updateUI(); render();
+
+  const mode=document.getElementById('sel-mode').value;
+  if(mode==='watch'){
+    log('SELF-PLAY: Alpha vs Beta mode','good');
+    aiTimer=setTimeout(aiMove,700);
+  }
+}
+
+const BOARD_EL=document.getElementById('board');
+const OVERLAY=document.getElementById('overlay');
+
+function render(){
+  BOARD_EL.innerHTML='';
+  const hlFrom=lastMove?`${lastMove.from[0]},${lastMove.from[1]}`:null;
+  const hlTo=lastMove?`${lastMove.to[0]},${lastMove.to[1]}`:null;
+
+  const selMoves=selected
+    ? legalMoves.filter(m=>m.from[0]===selected[0]&&m.from[1]===selected[1])
+    : [];
+  const hintSet=new Set(selMoves.map(m=>`${m.to[0]},${m.to[1]}`));
+  if(hintHighlight) hintSet.add(`${hintHighlight.to[0]},${hintHighlight.to[1]}`);
+
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const sq=document.createElement('div');
+    const dark=(r+c)%2===1;
+    sq.className='sq '+(dark?'dark':'light');
+    if(dark){
+      if(selected&&selected[0]===r&&selected[1]===c) sq.classList.add('selected');
+      else if(hintSet.has(`${r},${c}`)) sq.classList.add('hint');
+      if(`${r},${c}`===hlFrom) sq.classList.add('last-from');
+      if(`${r},${c}`===hlTo)   sq.classList.add('last-to');
+    }
+    const p=board[r][c];
+    if(p){
+      const el=document.createElement('div');
+      el.className=`piece ${p.color}`+(p.king?' king':'');
+      el.onclick=e=>{e.stopPropagation();clickSq(r,c);};
+      sq.appendChild(el);
+    }
+    if(dark) sq.onclick=()=>clickSq(r,c);
+    BOARD_EL.appendChild(sq);
+  }
+
+  const ev=evaluate(board);
+  const cl=Math.max(-15,Math.min(15,ev));
+  document.getElementById('eval-bar').style.width=(((cl+15)/30)*100)+'%';
+}
+
+function clickSq(r,c){
+  const mode=document.getElementById('sel-mode').value;
+  if(aiThinking||mode==='watch') return;
+  if(mode!=='human'&&turn==='blk') return;
+  hintHighlight=null;
+  const p=board[r][c];
+  if(p&&p.color===turn){
+    selected=[r,c]; legalMoves=getAllMoves(board,turn); render(); return;
+  }
+  if(selected){
+    const mv=legalMoves.find(m=>m.from[0]===selected[0]&&m.from[1]===selected[1]&&m.to[0]===r&&m.to[1]===c);
+    if(mv){advance(mv);return;}
+  }
+  selected=null; legalMoves=[]; render();
+}
+
+function advance(move){
+  history.push(cloneBoard(board));
+  applyMove(board,move);
+  lastMove=move; hintHighlight=null;
+  moveCount++;
+  const cap=move.captures.length;
+  const col=move.piece.color==='red'?'':'good';
+  log(`${move.piece.color.toUpperCase()} ${rc(move.from)}→${rc(move.to)}${cap?' cap×'+cap:''}${move.promoted?' ♛':''}`,col);
+
+  // Capture burst
+  if(cap>0){
+    const rect=BOARD_EL.getBoundingClientRect();
+    const cell=rect.width/8;
+    const x=rect.left+move.to[1]*cell+cell/2;
+    const y=rect.top+move.to[0]*cell+cell/2;
+    const col2=move.piece.color==='red'?'#cc2200':'#888888';
+    burst(x,y,20+cap*8,col2);
+  }
+
+  turn=turn==='red'?'blk':'red';
+  legalMoves=getAllMoves(board,turn);
+  selected=null;
+
+  if(!legalMoves.length){
+    const winner=turn==='red'?'BLACK (ALPHA)':'RED (YOU)';
+    if(turn==='blk') scores.red++; else scores.blk++;
+    document.getElementById('sc-red').textContent=scores.red;
+    document.getElementById('sc-blk').textContent=scores.blk;
+    // big burst on win
+    const rect=BOARD_EL.getBoundingClientRect();
+    burst(rect.left+rect.width/2,rect.top+rect.height/2,60,turn==='blk'?'#cc2200':'#888');
+    endGame(winner+' WINS!');
+    return;
+  }
+  updateUI(); render();
+
+  const mode=document.getElementById('sel-mode').value;
+  if((mode==='ai-alpha'||mode==='ai-easy')&&turn==='blk'){
+    aiThinking=true; aiTimer=setTimeout(aiMove,80);
+  } else if(mode==='watch'){
+    aiThinking=true; aiTimer=setTimeout(aiMove,350);
+  }
+}
+
+function undoMove(){
+  if(history.length<1) return;
+  board=cloneBoard(history.pop());
+  if(document.getElementById('sel-mode').value!=='human'&&history.length>0){
+    board=cloneBoard(history.pop());
+  }
+  turn='red'; selected=null; legalMoves=getAllMoves(board,turn);
+  lastMove=null; hintHighlight=null; moveCount=Math.max(0,moveCount-2);
+  updateUI(); render(); log('Position restored.');
+}
+
+function hintMove(){
+  if(turn!=='red'||aiThinking) return;
+  nodesSearched=0;
+  const res=alphaBeta(board,3,-Infinity,Infinity,true,'red');
+  if(res.move){ hintHighlight=res.move; selected=[res.move.from[0],res.move.from[1]]; legalMoves=getAllMoves(board,'red'); render(); log('HINT: try '+rc(res.move.from)+'→'+rc(res.move.to),'good'); }
+}
+
+// ── AI ─────────────────────────────────────────────────────
+function aiMove(){
+  const mode=document.getElementById('sel-mode').value;
+  const depth=parseInt(document.getElementById('sel-depth').value);
+  const nc={n:0};
+  let move;
+  if(mode==='ai-easy'){
+    const mv=getAllMoves(board,turn);
+    move=mv[~~(Math.random()*mv.length)];
+  } else {
+    const max=turn==='red';
+    const res=alphaBeta(board,depth,-Infinity,Infinity,max,turn,nc);
+    move=res.move; nodesSearched=nc.n;
+    document.getElementById('s-nodes').textContent=nc.n.toLocaleString();
+  }
+  aiThinking=false;
+  if(move) advance(move);
+}
+
+function alphaBeta(b,depth,alpha,beta,maximizing,color,nc={n:0}){
+  nc.n++;
+  const moves=getAllMoves(b,color);
+  if(depth===0||!moves.length) return{score:evaluate(b),move:null,nodes:nc.n};
+  moves.sort((a,bb)=>bb.captures.length-a.captures.length);
+  let best=moves[0],bsc=maximizing?-Infinity:Infinity;
+  for(const m of moves){
+    const nb=cloneBoard(b); applyMove(nb,m);
+    const r=alphaBeta(nb,depth-1,alpha,beta,!maximizing,color==='red'?'blk':'red',nc);
+    if(maximizing){if(r.score>bsc){bsc=r.score;best=m;}alpha=Math.max(alpha,bsc);}
+    else{if(r.score<bsc){bsc=r.score;best=m;}beta=Math.min(beta,bsc);}
+    if(beta<=alpha) break;
+  }
+  return{score:bsc,move:best,nodes:nc.n};
+}
+
+function evaluate(b){
+  let s=0;
+  const rm=getAllMoves(b,'red').length, bm=getAllMoves(b,'blk').length;
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p=b[r][c]; if(!p) continue;
+    const sg=p.color==='red'?1:-1;
+    s+=sg*(p.king?5:3);
+    if(!p.king){const adv=p.color==='red'?7-r:r; s+=sg*adv*0.22;}
+    if(c>=2&&c<=5&&r>=2&&r<=5) s+=sg*0.3;
+    if(p.color==='red'&&r===7) s+=0.5;
+    if(p.color==='blk'&&r===0) s-=0.5;
+    if(c===0||c===7) s-=sg*0.12;
+  }
+  s+=(rm-bm)*0.1;
+  return s;
+}
+
+function getAllMoves(b,color){
+  const caps=[],reg=[];
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p=b[r][c]; if(!p||p.color!==color) continue;
+    const cs=getCaptures(b,r,c,p,[]);
+    if(cs.length) caps.push(...cs); else reg.push(...getRegular(b,r,c,p));
+  }
+  return caps.length?caps:reg;
+}
+
+function dirs(p){
+  if(p.king) return[[-1,-1],[-1,1],[1,-1],[1,1]];
+  return p.color==='red'?[[-1,-1],[-1,1]]:[[1,-1],[1,1]];
+}
+
+function getRegular(b,r,c,p){
+  return dirs(p).filter(([dr,dc])=>{const nr=r+dr,nc=c+dc;return nr>=0&&nr<8&&nc>=0&&nc<8&&!b[nr][nc];})
+    .map(([dr,dc])=>{const nr=r+dr,nc=c+dc;
+      const prom=!p.king&&((p.color==='red'&&nr===0)||(p.color==='blk'&&nr===7));
+      return{from:[r,c],to:[nr,nc],captures:[],piece:p,promoted:prom};});
+}
+
+function getCaptures(b,r,c,p,captured){
+  const capSet=new Set(captured.map(x=>`${x[0]},${x[1]}`));
+  const res=[];
+  for(const[dr,dc] of dirs(p)){
+    const mr=r+dr,mc=c+dc,lr=r+2*dr,lc=c+2*dc;
+    if(lr<0||lr>=8||lc<0||lc>=8) continue;
+    const mid=b[mr][mc];
+    if(!mid||mid.color===p.color||capSet.has(`${mr},${mc}`)) continue;
+    if(b[lr][lc]!==null) continue;
+    const nc=[...captured,[mr,mc]];
+    const prom=!p.king&&((p.color==='red'&&lr===0)||(p.color==='blk'&&lr===7));
+    if(!prom){const f=getCaptures(b,lr,lc,p,nc);if(f.length){res.push(...f);continue;}}
+    res.push({from:[r,c],to:[lr,lc],captures:nc,piece:p,promoted:prom});
+  }
+  return res;
+}
+
+function applyMove(b,{from,to,captures,piece,promoted}){
+  b[to[0]][to[1]]={color:piece.color,king:piece.king||promoted||(piece.color==='red'&&to[0]===0)||(piece.color==='blk'&&to[0]===7)};
+  b[from[0]][from[1]]=null;
+  for(const[cr,cc] of captures) b[cr][cc]=null;
+}
+
+function cloneBoard(b){return b.map(row=>row.map(cell=>cell?{...cell}:null));}
+
+function rc([r,c]){return String.fromCharCode(65+c)+(8-r);}
+
+function depthChanged(){
+  document.getElementById('s-mode').textContent=
+    document.getElementById('sel-mode').value==='ai-alpha'
+      ?'vs AI α-β ('+document.getElementById('sel-depth').value+' ply)'
+      : document.querySelector('#sel-mode option:checked').text;
+}
+
+function updateUI(){
+  const rc2=board.flat().filter(p=>p&&p.color==='red').length;
+  const bc=board.flat().filter(p=>p&&p.color==='blk').length;
+  document.getElementById('s-red').textContent=rc2;
+  document.getElementById('s-blk').textContent=bc;
+  document.getElementById('s-nodes').textContent=nodesSearched.toLocaleString();
+  document.getElementById('s-move').textContent=moveCount;
+  const mode=document.getElementById('sel-mode').value;
+  const mnames={'ai-alpha':'vs AI (Alpha)','ai-easy':'vs AI (Easy)','human':'2-Player','watch':'Alpha vs Beta'};
+  document.getElementById('s-mode').textContent=mnames[mode];
+  document.getElementById('s-turn').textContent=
+    aiThinking?'AI THINKING…':turn==='red'?'YOUR MOVE':'BLACK\'S MOVE';
+}
+
+function endGame(msg){
+  document.getElementById('ov-title').textContent=msg;
+  document.getElementById('ov-sub').textContent='Samuel\'s machine has processed the result.';
+  OVERLAY.classList.add('show');
+  log(msg,'hi'); aiThinking=false;
+}
+
+function log(msg,cls=''){
+  const el=document.getElementById('log');
+  const d=document.createElement('div');
+  if(cls) d.className=cls;
+  d.textContent='> '+msg;
+  el.appendChild(d); el.scrollTop=el.scrollHeight;
+}
+function clearLog(){document.getElementById('log').innerHTML='';}
+
+newGame();
+(function loop(){if(!aiThinking){}requestAnimationFrame(loop);})();
+</script>
+</body>
+</html>
